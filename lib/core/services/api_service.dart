@@ -20,27 +20,25 @@ class ApiService {
         final List<GameModel> games = [];
         List<dynamic> gameItems = [];
 
-        if (data['specials'] != null && data['specials']['items'] != null) {
+        if (data['featured'] != null && data['featured']['items'] != null) {
+          gameItems.addAll(data['featured']['items']);
+        }
+        if (gameItems.isEmpty && data['specials'] != null && data['specials']['items'] != null) {
           gameItems.addAll(data['specials']['items']);
-        }
-        if (data['new_releases'] != null && data['new_releases']['items'] != null) {
-          gameItems.addAll(data['new_releases']['items']);
-        }
-        if (data['top_sellers'] != null && data['top_sellers']['items'] != null) {
-          gameItems.addAll(data['top_sellers']['items']);
         }
 
         debugPrint('Total game items found: ${gameItems.length}');
 
-        final limitedItems = gameItems.take(20).toList();
+        final limitedItems = gameItems.take(15).toList();
 
         for (var item in limitedItems) {
           final gameId = item['id'];
           if (gameId != null) {
             debugPrint('Fetching game details for ID: $gameId');
             final gameDetail = await getGameDetails(gameId);
-            if (gameDetail != null && gameDetail.name.length <= 18) {
+            if (gameDetail != null) {
               games.add(gameDetail);
+              if (games.length >= 10) break;
             }
           }
         }
@@ -48,7 +46,9 @@ class ApiService {
         debugPrint('Successfully loaded ${games.length} games');
         return games;
       } else {
-        throw Exception('Failed to load featured games: ${response.statusCode}');
+        throw Exception(
+          'Failed to load featured games: ${response.statusCode}',
+        );
       }
     } catch (e) {
       debugPrint('Error in getFeaturedGames: $e');

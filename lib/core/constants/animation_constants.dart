@@ -14,7 +14,7 @@ class AnimationConstants {
   static const double coverLiftFactor = 0.75;
   static const double parallaxMultiplier = 180.0;
 
-  static const double viewportFraction = 0.5;
+  static const double viewportFraction = 0.95;
   static const double pageScaleFactor = 0.05;
   static const double pageTranslateY = 30.0;
   static const double topSpacing = 100.0;

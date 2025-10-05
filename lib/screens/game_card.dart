@@ -6,6 +6,7 @@ import 'package:game_explorer/core/constants/sizes.dart';
 import 'package:game_explorer/core/constants/gaps.dart';
 import 'package:game_explorer/core/constants/colors.dart';
 import 'package:game_explorer/core/constants/animation_constants.dart';
+import 'package:game_explorer/screens/widgets/game_detail_content.dart';
 
 class GameCard extends StatefulWidget {
   final GameModel game;
@@ -22,6 +23,7 @@ class _GameCardState extends State<GameCard>
   // 애니메이션 컨트롤러
   bool _isExpanded = false;
   double _dragAccumulation = 0.0;
+  final ScrollController _scrollController = ScrollController();
   late final AnimationController _detailController = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 350),
@@ -44,21 +46,37 @@ class _GameCardState extends State<GameCard>
   }
 
   void _onVerticalDragUpdate(DragUpdateDetails details) {
-    _dragAccumulation += details.delta.dy;
+    if (_isExpanded && _scrollController.hasClients) {
+      final isAtBottom = _scrollController.offset >=
+          _scrollController.position.maxScrollExtent;
+      if (isAtBottom && details.delta.dy < 0) {
+        _dragAccumulation += details.delta.dy;
+      }
+    } else {
+      _dragAccumulation += details.delta.dy;
+    }
   }
 
   void _onVerticalDragEnd(DragEndDetails details) {
     final velocity = details.primaryVelocity ?? 0.0;
-    if (velocity > AnimationConstants.dragVelocityThreshold) {
-      _toggleExpanded(expand: true);
-    } else if (velocity < -AnimationConstants.dragVelocityThreshold) {
-      _toggleExpanded(expand: false);
-    } else {
-      if (_dragAccumulation > AnimationConstants.dragDistanceThreshold) {
-        _toggleExpanded(expand: true);
-      } else if (_dragAccumulation <
-          -AnimationConstants.dragDistanceThreshold) {
+
+    if (_isExpanded) {
+      if (velocity < -AnimationConstants.dragVelocityThreshold ||
+          _dragAccumulation < -AnimationConstants.dragDistanceThreshold) {
         _toggleExpanded(expand: false);
+      }
+    } else {
+      if (velocity > AnimationConstants.dragVelocityThreshold) {
+        _toggleExpanded(expand: true);
+      } else if (velocity < -AnimationConstants.dragVelocityThreshold) {
+        _toggleExpanded(expand: false);
+      } else {
+        if (_dragAccumulation > AnimationConstants.dragDistanceThreshold) {
+          _toggleExpanded(expand: true);
+        } else if (_dragAccumulation <
+            -AnimationConstants.dragDistanceThreshold) {
+          _toggleExpanded(expand: false);
+        }
       }
     }
     _dragAccumulation = 0.0;
@@ -95,6 +113,7 @@ class _GameCardState extends State<GameCard>
   @override
   void dispose() {
     _detailController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -242,27 +261,10 @@ class _GameCardState extends State<GameCard>
                                         maxLines: 3,
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                      secondChild: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            '상세 정보',
-                                            style: TextStyle(
-                                              fontSize: Sizes.size18,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.steamWhite,
-                                            ),
-                                          ),
-                                          Gaps.v12,
-                                          Text(
-                                            widget.game.shortDescription,
-                                            style: const TextStyle(
-                                              fontSize: Sizes.size14,
-                                              color: AppColors.steamWhite,
-                                            ),
-                                          ),
-                                        ],
+                                      secondChild: GameDetailContent(
+                                        game: widget.game,
+                                        scrollController: _scrollController,
+                                        getRatingColor: _getRatingColor,
                                       ),
                                       crossFadeState: _isExpanded
                                           ? CrossFadeState.showSecond
@@ -272,59 +274,63 @@ class _GameCardState extends State<GameCard>
                                       ),
                                     ),
                                     Gaps.v20,
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'Price',
-                                              style: TextStyle(
-                                                fontSize: Sizes.size12,
-                                                color: AppColors.steamGrey,
-                                              ),
-                                            ),
-                                            Gaps.v4,
-                                            Text(
-                                              widget.game.price,
-                                              style: const TextStyle(
-                                                fontSize: Sizes.size20,
-                                                fontWeight: FontWeight.bold,
-                                                color: AppColors.steamAccent,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
-                                          children: [
-                                            const Text(
-                                              'Rating',
-                                              style: TextStyle(
-                                                fontSize: Sizes.size12,
-                                                color: AppColors.steamGrey,
-                                              ),
-                                            ),
-                                            Gaps.v4,
-                                            Text(
-                                              widget.game.rating,
-                                              style: TextStyle(
-                                                fontSize: Sizes.size14,
-                                                fontWeight: FontWeight.w600,
-                                                color: _getRatingColor(
-                                                  widget.game.rating,
+                                    AnimatedOpacity(
+                                      opacity: _isExpanded ? 0.0 : 1.0,
+                                      duration: const Duration(milliseconds: 300),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Price',
+                                                style: TextStyle(
+                                                  fontSize: Sizes.size12,
+                                                  color: AppColors.steamGrey,
                                                 ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                                              Gaps.v4,
+                                              Text(
+                                                widget.game.price,
+                                                style: const TextStyle(
+                                                  fontSize: Sizes.size20,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.steamAccent,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              const Text(
+                                                'Rating',
+                                                style: TextStyle(
+                                                  fontSize: Sizes.size12,
+                                                  color: AppColors.steamGrey,
+                                                ),
+                                              ),
+                                              Gaps.v4,
+                                              Text(
+                                                widget.game.rating,
+                                                style: TextStyle(
+                                                  fontSize: Sizes.size14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: _getRatingColor(
+                                                    widget.game.rating,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
